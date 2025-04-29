@@ -1,4 +1,4 @@
-# .github/workflows/devops-pipeline.yml
+.github/workflows/devops-pipeline.yml
 name: DevOps Pipeline
 
 on:
