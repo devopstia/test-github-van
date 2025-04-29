@@ -1,4 +1,4 @@
-# .github/workflows/devops-pipeline.yml
+## Define multiple jobs
 name: DevOps Pipeline
 
 on:
@@ -7,45 +7,93 @@ on:
       - main
 
 jobs:
-  devops-pipeline:
+  checkout:
+    name: Stage 1 - Checkout
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v3
 
-      - name: Checkout Stage
+      - name: Checkout Info
         run: |
           echo "Checking out the repository. Please wait ............"
           sleep 1
+
+  test:
+    name: Stage 2 - Test
+    runs-on: ubuntu-latest
+    needs: checkout
+    steps:
       - name: Testing the Code
         run: |
           echo "Testing the code. Please wait ............"
           sleep 1
+
+  scan:
+    name: Stage 3 - Scan
+    runs-on: ubuntu-latest
+    needs: test
+    steps:
       - name: Scanning the Code
         run: |
           echo "Scanning the code. Please wait ............"
           sleep 1
+
+  build:
+    name: Stage 4 - Build
+    runs-on: ubuntu-latest
+    needs: scan
+    steps:
       - name: Building the Code
         run: |
           echo "Building the code. Please wait ............"
           sleep 1
+
+  push-artifact:
+    name: Stage 5 - Push to Artifactory
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
       - name: Pushing the Code to Artifactory
         run: |
           echo "Pushing the code to artifactory. Please wait ............"
           sleep 1
+
+  deploy:
+    name: Stage 6 - Deploy
+    runs-on: ubuntu-latest
+    needs: push-artifact
+    steps:
       - name: Deploying the Code
         run: |
           echo "Deploying the code. Please wait ............"
           sleep 1
+
+  validate:
+    name: Stage 7 - Post-Deployment Validation
+    runs-on: ubuntu-latest
+    needs: deploy
+    steps:
       - name: Checking the Container State
         run: |
           echo "Checking the container state. Please wait ............"
           sleep 1
+
+  cleanup:
+    name: Stage 8 - Cleanup
+    runs-on: ubuntu-latest
+    needs: validate
+    steps:
       - name: Clean Up
         run: |
           echo "Clean Up. Please wait ............"
           sleep 1
+
+  notify:
+    name: Stage 9 - Notify
+    runs-on: ubuntu-latest
+    needs: cleanup
+    steps:
       - name: Success Message
         if: success()
         run: echo "Pipeline succeeded!"
