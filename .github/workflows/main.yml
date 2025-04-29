@@ -55,7 +55,7 @@ jobs:
     name: Stage 5 - Push to Artifactory
     runs-on: ubuntu-latest
     needs: checkout
-    needs: build
+
     steps:
       - name: Pushing the Code to Artifactory
         run: |
