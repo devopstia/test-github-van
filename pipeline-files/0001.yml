@@ -1,4 +1,4 @@
-   # To run test and scan jobs in parallel, simply make them both depend on the same previous job (in this case, checkout) 
+# To run test and scan jobs in parallel, simply make them both depend on the same previous job (in this case, checkout) 
 name: DevOps Pipeline
 
 on:
@@ -8,7 +8,7 @@ on:
 
 jobs:
   checkout:
-    name: Stage 1 - vanessa
+    name: Stage 1 - Checkout
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Repository
