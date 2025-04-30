@@ -1,4 +1,4 @@
-## Define multiple jobs
+# To run test and scan jobs in parallel, simply make them both depend on the same previous job (in this case, checkout) 
 name: DevOps Pipeline
 
 on:
@@ -32,7 +32,7 @@ jobs:
   scan:
     name: Stage 3 - Scan
     runs-on: ubuntu-latest
-    needs: test
+    needs: checkout
     steps:
       - name: Scanning the Code
         run: |
@@ -42,7 +42,9 @@ jobs:
   build:
     name: Stage 4 - Build
     runs-on: ubuntu-latest
-    needs: scan
+    needs: 
+      - test
+      - scan
     steps:
       - name: Building the Code
         run: |
@@ -101,3 +103,5 @@ jobs:
       - name: Failure Message
         if: failure()
         run: echo "Pipeline failed!"
+
+```
