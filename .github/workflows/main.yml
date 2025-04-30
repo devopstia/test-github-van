@@ -1,22 +1,96 @@
-# .github/workflows/check-tools-version.yml
-name: Check Docker and Git Versions
+name: Full Stack CI/CD Pipeline
 
 on:
   push:
     branches: [main]
-  workflow_dispatch:
 
 jobs:
-  check-versions:
+  checkout:
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout repository
+      - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Check Docker version
-        run: docker --version
+  install-frontend:
+    needs: checkout
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install Frontend Dependencies
+        run: |
+          cd frontend
+          npm install
 
-      - name: Check Git version
-        run: git --version
+  install-backend:
+    needs: checkout
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install Backend Dependencies
+        run: |
+          cd backend
+          npm install
+
+  test-frontend:
+    needs: install-frontend
+    runs-on: ubuntu-latest
+    steps:
+      - name: Run Frontend Tests
+        run: |
+          cd frontend
+          npm test
+
+  test-backend:
+    needs: install-backend
+    runs-on: ubuntu-latest
+    steps:
+      - name: Run Backend Tests
+        run: |
+          cd backend
+          npm test
+
+  build:
+    needs: [test-frontend, test-backend]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Build Frontend
+        run: |
+          cd frontend
+          npm run build
+
+      - name: Build Docker Image
+        run: |
+          docker build -t your-dockerhub-username/your-app:latest .
+
+      - name: Push Docker Image to DockerHub
+        run: |
+          echo "${{ secrets.DOCKER_PASSWORD }}" | docker login -u "${{ secrets.DOCKER_USERNAME }}" --password-stdin
+          docker push your-dockerhub-username/your-app:latest
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            docker pull your-dockerhub-username/your-app:latest
+            docker stop your-app || true
+            docker rm your-app || true
+            docker run -d --name your-app -p 80:3000 your-dockerhub-username/your-app:latest
+
+  notify:
+    needs: deploy
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send Slack Notification
+        uses: 8398a7/action-slack@v3
+        with:
+          status: ${{ job.status }}
+          fields: repo,message,commit,author
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK }}
+
 
