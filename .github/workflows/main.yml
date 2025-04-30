@@ -22,4 +22,45 @@ jobs:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
-     
+      - name: Build and push auth service
+        uses: docker/build-push-action@v5
+        with:
+          context: ./weather-app/auth
+          file: ./weather-app/auth/Dockerfile
+          push: true
+          tags: ${{ secrets.DOCKER_USERNAME }}/weather-auth:latest
+
+      - name: Build and push db service
+        uses: docker/build-push-action@v5
+        with:
+          context: ./weather-app/db
+          file: ./weather-app/db/Dockerfile
+          push: true
+          tags: ${{ secrets.DOCKER_USERNAME }}/weather-db:latest
+
+      - name: Build and push redis service
+        uses: docker/build-push-action@v5
+        with:
+          context: ./weather-app/redis
+          file: ./weather-app/redis/Dockerfile
+          push: true
+          tags: ${{ secrets.DOCKER_USERNAME }}/weather-redis:latest
+
+      - name: Build and push ui service
+        uses: docker/build-push-action@v5
+        with:
+          context: ./weather-app/ui
+          file: ./weather-app/ui/Dockerfile
+          push: true
+          tags: ${{ secrets.DOCKER_USERNAME }}/weather-ui:latest
+
+      - name: Build and push weather service
+        uses: docker/build-push-action@v5
+        with:
+          context: ./weather-app/weather
+          file: ./weather-app/weather/Dockerfile
+          push: true
+          tags: ${{ secrets.DOCKER_USERNAME }}/weather-weather:latest
+
+      - name: List all Docker images
+        run: docker images
