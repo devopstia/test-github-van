@@ -6,9 +6,11 @@ on:
       - main
 
 jobs:
-  build:
+  setup:
+    name: Setup Docker Auth
     runs-on: ubuntu-latest
-
+    outputs:
+      username: ${{ steps.export-vars.outputs.username }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
@@ -22,45 +24,78 @@ jobs:
           username: ${{ vars.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
-      - name: Build and push auth service
-        uses: docker/build-push-action@v5
+      - name: Export username
+        id: export-vars
+        run: echo "username=${{ vars.DOCKER_USERNAME }}" >> $GITHUB_OUTPUT
+
+  build-auth:
+    needs: setup
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/build-push-action@v5
         with:
           context: ./weather-app/auth
           file: ./weather-app/auth/Dockerfile
           push: true
-          tags: ${{ vars.DOCKER_USERNAME }}/weather-auth:latest
+          tags: ${{ needs.setup.outputs.username }}/weather-auth:latest
 
-      - name: Build and push db service
-        uses: docker/build-push-action@v5
+  build-db:
+    needs: setup
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/build-push-action@v5
         with:
           context: ./weather-app/db
           file: ./weather-app/db/Dockerfile
           push: true
-          tags: ${{ vars.DOCKER_USERNAME }}/weather-db:latest
+          tags: ${{ needs.setup.outputs.username }}/weather-db:latest
 
-      - name: Build and push redis service
-        uses: docker/build-push-action@v5
+  build-redis:
+    needs: setup
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/build-push-action@v5
         with:
           context: ./weather-app/redis
           file: ./weather-app/redis/Dockerfile
           push: true
-          tags: ${{ vars.DOCKER_USERNAME }}/weather-redis:latest
+          tags: ${{ needs.setup.outputs.username }}/weather-redis:latest
 
-      - name: Build and push ui service
-        uses: docker/build-push-action@v5
+  build-ui:
+    needs: setup
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/build-push-action@v5
         with:
           context: ./weather-app/ui
           file: ./weather-app/ui/Dockerfile
           push: true
-          tags: ${{ vars.DOCKER_USERNAME }}/weather-ui:latest
+          tags: ${{ needs.setup.outputs.username }}/weather-ui:latest
 
-      - name: Build and push weather service
-        uses: docker/build-push-action@v5
+  build-weather:
+    needs: setup
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/build-push-action@v5
         with:
           context: ./weather-app/weather
           file: ./weather-app/weather/Dockerfile
           push: true
-          tags: ${{ vars.DOCKER_USERNAME }}/weather-weather:latest
+          tags: ${{ needs.setup.outputs.username }}/weather-weather:latest
 
+  list-images:
+    needs: [build-auth, build-db, build-redis, build-ui, build-weather]
+    runs-on: ubuntu-latest
+    steps:
       - name: List all Docker images
         run: docker images
