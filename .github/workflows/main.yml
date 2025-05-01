@@ -16,4 +16,4 @@ jobs:
 
       - name: List root directory contents
         run: |
-          ssh -o StrictHostKeyChecking=no -i mac_key.pem ubuntu@13.55.123.45 "ls -la /"
+          ssh -o StrictHostKeyChecking=no -i mac_key.pem ubuntu@18.215.149.69 "ls -la /"
