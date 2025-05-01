@@ -1,4 +1,10 @@
   deploy:
+  
+  on:
+  push:
+    branches:
+      - main
+
     name: SSH to EC2, Copy Code, and Pull Images
     needs:
       - build-auth
