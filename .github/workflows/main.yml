@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+
 jobs:
   list-root:
     runs-on: ubuntu-latest
@@ -11,8 +12,9 @@ jobs:
     steps:
       - name: Create SSH key file
         run: |
-          echo "${{ secrets.MAC_SSH_KEY }}" > mac_key.pem
+          printf "%s" "${{ secrets.MAC_SSH_KEY }}" > mac_key.pem
           chmod 600 mac_key.pem
+        shell: bash
 
       - name: List root directory contents
         run: |
