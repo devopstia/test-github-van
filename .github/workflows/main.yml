@@ -127,7 +127,7 @@ jobs:
 
       - name: SSH and Pull Docker Images
         run: |
-          ssh -o StrictHostKeyChecking=no -i mac_key.pem ubuntu@${{ secrets.EC2_HOST }} << EOF
+          ssh -o StrictHostKeyChecking=no -i mac_key.pem ubuntu@${{ vars.EC2_HOST }} << EOF
             echo "✅ Logging into Docker..."
             echo "${{ secrets.DOCKER_PASSWORD }}" | docker login -u "${{ vars.DOCKER_USERNAME }}" --password-stdin
 
