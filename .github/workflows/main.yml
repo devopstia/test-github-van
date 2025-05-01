@@ -129,15 +129,15 @@ jobs:
         run: |
           ssh -o StrictHostKeyChecking=no -i mac_key.pem ubuntu@${{ vars.EC2_HOST }} << EOF
             echo "✅ Logging into Docker..."
-            echo "${{ secrets.DOCKER_PASSWORD }}" | docker login -u "${{ vars.DOCKER_USERNAME }}" --password-stdin
+            echo "${{ secrets.DOCKER_PASSWORD }}" | sudo docker login -u "${{ vars.DOCKER_USERNAME }}" --password-stdin
 
             echo "📦 Pulling all service images..."
-            docker pull ${{ vars.DOCKER_USERNAME }}/weather-auth:latest
-            docker pull ${{ vars.DOCKER_USERNAME }}/weather-db:latest
-            docker pull ${{ vars.DOCKER_USERNAME }}/weather-redis:latest
-            docker pull ${{ vars.DOCKER_USERNAME }}/weather-ui:latest
-            docker pull ${{ vars.DOCKER_USERNAME }}/weather-weather:latest
+            sudo docker pull ${{ vars.DOCKER_USERNAME }}/weather-auth:latest
+            sudo docker pull ${{ vars.DOCKER_USERNAME }}/weather-db:latest
+            sudo docker pull ${{ vars.DOCKER_USERNAME }}/weather-redis:latest
+            sudo docker pull ${{ vars.DOCKER_USERNAME }}/weather-ui:latest
+            sudo docker pull ${{ vars.DOCKER_USERNAME }}/weather-weather:latest
 
             echo "✅ Images pulled successfully."
-            docker images
+            sudo docker images
           EOF
