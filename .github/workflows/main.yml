@@ -1,46 +1,41 @@
-deploy:
-  name: Deploy to EC2
-  needs:
-    - build-auth
-    - build-db
-    - build-redis
-    - build-ui
-    - build-weather
-  runs-on: ubuntu-latest
+  deploy:
+    name: SSH to EC2, Copy Code, and Pull Images
+    needs:
+      - build-auth
+      - build-db
+      - build-redis
+      - build-ui
+      - build-weather
+    runs-on: ubuntu-latest
 
-  steps:
-    - name: Checkout repository
-      uses: actions/checkout@v3
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
 
-    - name: Create SSH key file
-      run: |
-        echo "${{ secrets.MAC_SSH_KEY }}" > mac_key.pem
-        chmod 400 mac_key.pem
+      - name: Create SSH key file
+        run: |
+          printf "%s" "${{ secrets.MAC_SSH_KEY }}" > mac_key.pem
+          chmod 400 mac_key.pem
 
-    - name: SSH and Pull Docker Images
-      run: |
-        ssh -o StrictHostKeyChecking=no -i mac_key.pem ubuntu@${{ vars.EC2_HOST }} << EOF
-          echo "✅ Logging into Docker..."
-          echo "${{ secrets.DOCKER_PASSWORD }}" | sudo docker login -u "${{ vars.DOCKER_USERNAME }}" --password-stdin
+      - name: Copy Code to EC2
+        run: |
+          rsync -avz -e "ssh -o StrictHostKeyChecking=no -i mac_key.pem" ./ ubuntu@${{ vars.EC2_HOST }}:/home/ubuntu/weather-app/
 
-          echo "📦 Pulling all service images..."
-          sudo docker pull ${{ vars.DOCKER_USERNAME }}/weather-auth:latest
-          sudo docker pull ${{ vars.DOCKER_USERNAME }}/weather-db:latest
-          sudo docker pull ${{ vars.DOCKER_USERNAME }}/weather-redis:latest
-          sudo docker pull ${{ vars.DOCKER_USERNAME }}/weather-ui:latest
-          sudo docker pull ${{ vars.DOCKER_USERNAME }}/weather-weather:latest
+      - name: SSH, Pull Docker Images, and List Code
+        run: |
+          ssh -o StrictHostKeyChecking=no -i mac_key.pem ubuntu@${{ vars.EC2_HOST }} << EOF
+            echo "✅ Logging into Docker..."
+            echo "${{ secrets.DOCKER_PASSWORD }}" | sudo docker login -u "${{ vars.DOCKER_USERNAME }}" --password-stdin
 
-          echo "✅ Images pulled successfully."
-          sudo docker images
-        EOF
+            echo "📦 Pulling all service images..."
+            sudo docker pull ${{ vars.DOCKER_USERNAME }}/weather-auth:latest
+            sudo docker pull ${{ vars.DOCKER_USERNAME }}/weather-db:latest
+            sudo docker pull ${{ vars.DOCKER_USERNAME }}/weather-redis:latest
+            sudo docker pull ${{ vars.DOCKER_USERNAME }}/weather-ui:latest
+            sudo docker pull ${{ vars.DOCKER_USERNAME }}/weather-weather:latest
 
-    - name: Copy Code to EC2
-      run: |
-        scp -o StrictHostKeyChecking=no -i mac_key.pem -r ./weather-app ubuntu@${{ vars.EC2_HOST }}:/home/ubuntu/weather-app-deploy
+            echo "📁 Listing contents of /home/ubuntu/weather-app:"
+            ls -al /home/ubuntu/weather-app
 
-    - name: List Files on EC2
-      run: |
-        ssh -o StrictHostKeyChecking=no -i mac_key.pem ubuntu@${{ vars.EC2_HOST }} << EOF
-          echo "📂 Listing contents of /home/ubuntu/weather-app-deploy"
-          ls -la /home/ubuntu/weather-app-deploy
-        EOF
+            echo "✅ Images and source code ready."
+          EOF
