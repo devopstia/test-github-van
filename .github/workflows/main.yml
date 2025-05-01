@@ -1,12 +1,12 @@
-name: List Root Files on EC2
+name: EC2 Setup and List Root Files
 
 on:
   push:
     branches:
       - main
-
+      
 jobs:
-  list-root:
+  setup-ec2:
     runs-on: ubuntu-latest
 
     steps:
@@ -16,6 +16,29 @@ jobs:
           chmod 600 mac_key.pem
         shell: bash
 
-      - name: List root directory contents
+      - name: Install Docker, Docker Compose, and Git + List Root Directory
         run: |
-          ssh -o StrictHostKeyChecking=no -i mac_key.pem ubuntu@18.215.149.69 "ls -la /"
+          ssh -o StrictHostKeyChecking=no -i mac_key.pem ubuntu@18.215.149.69 << 'EOF'
+            echo "🔧 Installing Docker..."
+            sudo apt-get update
+            sudo apt-get install -y docker.io
+
+            echo "🔧 Installing Docker Compose..."
+            sudo curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+            sudo chmod +x /usr/local/bin/docker-compose
+
+            echo "🔧 Installing Git..."
+            sudo apt-get install -y git
+
+            echo "✅ Docker version:"
+            docker --version
+
+            echo "✅ Docker Compose version:"
+            docker-compose --version
+
+            echo "✅ Git version:"
+            git --version
+
+            echo "📁 Root directory listing:"
+            ls -la /
+          EOF
