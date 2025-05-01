@@ -110,7 +110,7 @@ jobs:
           tags: ${{ vars.DOCKER_USERNAME }}/weather-weather:latest
 
   deploy:
-    name: SSH to EC2, Pull Images, and Copy Files
+    name: Deploy to EC2
     needs:
       - build-auth
       - build-db
@@ -142,12 +142,13 @@ jobs:
             sudo docker images
           EOF
 
-      - name: Copy EC2 Home Directory to Runner
+      - name: Copy Code to EC2
         run: |
-          mkdir -p ec2_home_copy
-          scp -o StrictHostKeyChecking=no -i mac_key.pem -r ubuntu@${{ vars.EC2_HOST }}:/home/ubuntu ec2_home_copy/
+          scp -o StrictHostKeyChecking=no -i mac_key.pem -r ./weather-app ubuntu@${{ vars.EC2_HOST }}:/home/ubuntu/weather-app-deploy
 
-      - name: List Contents of Copied Home Directory
+      - name: List Files on EC2
         run: |
-          echo "📂 Contents of /home/ubuntu from EC2:"
-          ls -la ec2_home_copy/ubuntu
+          ssh -o StrictHostKeyChecking=no -i mac_key.pem ubuntu@${{ vars.EC2_HOST }} << EOF
+            echo "📂 Listing contents of /home/ubuntu/weather-app-deploy"
+            ls -la /home/ubuntu/weather-app-deploy
+          EOF
