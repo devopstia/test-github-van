@@ -1,0 +1,19 @@
+name: List Root Files on EC2
+
+on:
+  push:
+    branches:
+      - main
+jobs:
+  list-root:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Create SSH key file
+        run: |
+          echo "${{ secrets.MAC_SSH_KEY }}" > mac_key.pem
+          chmod 600 mac_key.pem
+
+      - name: List root directory contents
+        run: |
+          ssh -o StrictHostKeyChecking=no -i mac_key.pem ubuntu@13.55.123.45 "ls -la /"
