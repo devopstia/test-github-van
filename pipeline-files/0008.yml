@@ -1,0 +1,152 @@
+name: Build, Push and Deploy WeatherApp
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  checkout:
+    name: Checkout Code
+    runs-on: ubuntu-latest
+    outputs:
+      repo-path: ${{ steps.set-path.outputs.repo-path }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Set path output (optional)
+        id: set-path
+        run: echo "repo-path=weather-app" >> $GITHUB_OUTPUT
+
+  build-auth:
+    name: Build Auth Service
+    needs: checkout
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          username: ${{ vars.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+      - uses: docker/build-push-action@v5
+        with:
+          context: ./weather-app/auth
+          file: ./weather-app/auth/Dockerfile
+          push: true
+          tags: ${{ vars.DOCKER_USERNAME }}/weather-auth:latest
+
+  build-db:
+    name: Build DB Service
+    needs: checkout
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          username: ${{ vars.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+      - uses: docker/build-push-action@v5
+        with:
+          context: ./weather-app/db
+          file: ./weather-app/db/Dockerfile
+          push: true
+          tags: ${{ vars.DOCKER_USERNAME }}/weather-db:latest
+
+  build-redis:
+    name: Build Redis Service
+    needs: checkout
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          username: ${{ vars.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+      - uses: docker/build-push-action@v5
+        with:
+          context: ./weather-app/redis
+          file: ./weather-app/redis/Dockerfile
+          push: true
+          tags: ${{ vars.DOCKER_USERNAME }}/weather-redis:latest
+
+  build-ui:
+    name: Build UI Service
+    needs: checkout
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          username: ${{ vars.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+      - uses: docker/build-push-action@v5
+        with:
+          context: ./weather-app/ui
+          file: ./weather-app/ui/Dockerfile
+          push: true
+          tags: ${{ vars.DOCKER_USERNAME }}/weather-ui:latest
+
+  build-weather:
+    name: Build Weather Service
+    needs: checkout
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          username: ${{ vars.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+      - uses: docker/build-push-action@v5
+        with:
+          context: ./weather-app/weather
+          file: ./weather-app/weather/Dockerfile
+          push: true
+          tags: ${{ vars.DOCKER_USERNAME }}/weather-weather:latest
+
+  deploy:
+    name: SSH to EC2, Copy Code, and Pull Images
+    needs:
+      - build-auth
+      - build-db
+      - build-redis
+      - build-ui
+      - build-weather
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Create SSH key file
+        run: |
+          printf "%s" "${{ secrets.MAC_SSH_KEY }}" > mac_key.pem
+          chmod 400 mac_key.pem
+
+      - name: Copy Code to EC2
+        run: |
+          rsync -avz -e "ssh -o StrictHostKeyChecking=no -i mac_key.pem" ./ ubuntu@${{ vars.EC2_HOST }}:/home/ubuntu/weather-app/
+
+      - name: SSH, Pull Docker Images, and List Code
+        run: |
+          ssh -o StrictHostKeyChecking=no -i mac_key.pem ubuntu@${{ vars.EC2_HOST }} << EOF
+            echo "✅ Logging into Docker..."
+            echo "${{ secrets.DOCKER_PASSWORD }}" | sudo docker login -u "${{ vars.DOCKER_USERNAME }}" --password-stdin
+
+            echo "📦 Pulling all service images..."
+            sudo docker pull ${{ vars.DOCKER_USERNAME }}/weather-auth:latest
+            sudo docker pull ${{ vars.DOCKER_USERNAME }}/weather-db:latest
+            sudo docker pull ${{ vars.DOCKER_USERNAME }}/weather-redis:latest
+            sudo docker pull ${{ vars.DOCKER_USERNAME }}/weather-ui:latest
+            sudo docker pull ${{ vars.DOCKER_USERNAME }}/weather-weather:latest
+
+            echo "📁 Listing contents of /home/ubuntu/weather-app:"
+            ls -al /home/ubuntu/weather-app
+
+            echo "✅ Images and source code ready."
+          EOF
