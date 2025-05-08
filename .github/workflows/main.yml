@@ -132,37 +132,78 @@ jobs:
         run: |
           rsync -avz -e "ssh -o StrictHostKeyChecking=no -i mac_key.pem" ./ ubuntu@${{ vars.EC2_HOST }}:/home/ubuntu/weather-app/
 
-      - name: SSH, Pull Docker Images, and List Code
+      - name: SSH, Pull Docker Images, and Deploy
         run: |
           ssh -o StrictHostKeyChecking=no -i mac_key.pem ubuntu@${{ vars.EC2_HOST }} << EOF
             echo "✅ Logging into Docker..."
             echo "${{ secrets.DOCKER_PASSWORD }}" | sudo docker login -u "${{ vars.DOCKER_USERNAME }}" --password-stdin
 
-            echo "📦 Pulling all service images..."
-            sudo docker pull ${{ vars.DOCKER_USERNAME }}/weather-auth:latest
-            sudo docker pull ${{ vars.DOCKER_USERNAME }}/weather-db:latest
-            sudo docker pull ${{ vars.DOCKER_USERNAME }}/weather-redis:latest
-            sudo docker pull ${{ vars.DOCKER_USERNAME }}/weather-ui:latest
-            sudo docker pull ${{ vars.DOCKER_USERNAME }}/weather-weather:latest
+            echo "📦 Pulling latest service images..."
+            sudo docker pull vanessasaha/weather-auth:latest
+            sudo docker pull vanessasaha/weather-db:latest
+            sudo docker pull vanessasaha/weather-redis:latest
+            sudo docker pull vanessasaha/weather-ui:latest
+            sudo docker pull vanessasaha/weather-weather:latest
 
-            echo "📁 Listing contents of /home/ubuntu/weather-app:"
-            ls -al /home/ubuntu/weather-app
-
+            echo "🔄 Replacing image variables..."
             cd /home/ubuntu/weather-app/docker-compose
-            echo "🔄 Replacing variables in docker-compose file..."
             sed -i 's|WEATHER_APP_AUTH|vanessasaha/weather-auth:latest|g' docker-compose.yml
             sed -i 's|WEATHER_APP_DB|vanessasaha/weather-db:latest|g' docker-compose.yml
             sed -i 's|WEATHER_APP_REDIS|vanessasaha/weather-redis:latest|g' docker-compose.yml
             sed -i 's|WEATHER_APP_UI|vanessasaha/weather-ui:latest|g' docker-compose.yml
             sed -i 's|WEATHER_WEATHER|vanessasaha/weather-weather:latest|g' docker-compose.yml
 
-            cat docker-compose.yml
-
-            echo "🛑 Taking down current containers..."
+            echo "🛑 Stopping existing containers..."
             sudo docker-compose down -v
 
-            echo "🚀 Starting services..."
+            echo "🚀 Deploying new containers..."
             sudo docker-compose up -d
+
+            echo "✅ Deployment complete. Running containers:"
             sudo docker ps
-            echo "✅ Deployment complete."
           EOF
+
+  slack:
+    name: Send Slack Notification
+    needs: [deploy]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set Slack Message Data
+        id: slack-data
+        run: |
+          if [ "${{ needs.deploy.result }}" == "success" ]; then
+            echo "status=✅ Deployment Succeeded" >> $GITHUB_OUTPUT
+            echo "color=good" >> $GITHUB_OUTPUT
+          else
+            echo "status=❌ Deployment Failed" >> $GITHUB_OUTPUT
+            echo "color=danger" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Send Slack Notification
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        run: |
+          curl -X POST -H 'Content-type: application/json' --data "$(jq -n \
+            --arg pretext "${{ steps.slack-data.outputs.status }}" \
+            --arg color "${{ steps.slack-data.outputs.color }}" \
+            --arg repo "${{ github.repository }}" \
+            --arg branch "${{ github.ref_name }}" \
+            --arg actor "${{ github.actor }}" \
+            --arg run_url "https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}" \
+            '{
+              attachments: [
+                {
+                  pretext: $pretext,
+                  color: $color,
+                  fields: [
+                    { title: "Repository", value: $repo, short: true },
+                    { title: "Branch", value: $branch, short: true },
+                    { title: "Triggered By", value: $actor, short: true },
+                    { title: "Run", value: $run_url, short: false }
+                  ],
+                  ts: (now | tostring)
+                }
+              ]
+            }')" \
+            "$SLACK_WEBHOOK_URL"
