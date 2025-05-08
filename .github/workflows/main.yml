@@ -150,11 +150,11 @@ jobs:
 
             cd /home/ubuntu/weather-app/docker-compose
             echo "🔄 Replacing variables in docker-compose file..."
-            sed -i 's|${WEATHER_APP_AUTH}|vanessasaha/weather-auth:latest|g' docker-compose.yml
-            sed -i 's|${WEATHER_APP_DB}|vanessasaha/weather-db:latest|g' docker-compose.yml
-            sed -i 's|${WEATHER_APP_REDIS}|vanessasaha/weather-redis:latest|g' docker-compose.yml
-            sed -i 's|${WEATHER_APP_UI}|vanessasaha/weather-ui:latest|g' docker-compose.yml
-            sed -i 's|${WEATHER_WEATHER}|vanessasaha/weather-weather:latest|g' docker-compose.yml
+            sed -i 's|WEATHER_APP_AUTH|vanessasaha/weather-auth:latest|g' docker-compose.yml
+            sed -i 's|WEATHER_APP_DB|vanessasaha/weather-db:latest|g' docker-compose.yml
+            sed -i 's|WEATHER_APP_REDIS|vanessasaha/weather-redis:latest|g' docker-compose.yml
+            sed -i 's|WEATHER_APP_UI|vanessasaha/weather-ui:latest|g' docker-compose.yml
+            sed -i 's|WEATHER_WEATHER|vanessasaha/weather-weather:latest|g' docker-compose.yml
 
             cat docker-compose.yml
 
